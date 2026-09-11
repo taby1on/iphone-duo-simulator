@@ -43,13 +43,14 @@ let angle = 180;
 let playing = false;
 let phase = 0;
 let transition = null;
+let unlockTransition = null;
 let ready = false;
 const screens = {};
 const uiReferenceEye = new THREE.Vector3(0, 0, 40);
 const innerUIFrame = new THREE.Vector4(-7.89935, .34562 - 5.8974, 15.7987, 11.1035);
 const outerUIFrame = new THREE.Vector4(.23396, .27173 - 5.8974, 7.73936, 11.2513)
   .multiplyScalar((uiReferenceEye.z - .24948) / (uiReferenceEye.z - .825538));
-const defaultUIs = await loadDefaultUIs();
+const { themes: defaultUIs, animator: unlockAnimator } = await loadDefaultUIs();
 let uiTheme = 'lockscreen';
 const uiCanvas = document.createElement('canvas');
 uiCanvas.width = 1600;
@@ -116,6 +117,17 @@ function showDefaultUI() {
   }
   document.querySelectorAll('[data-ui-theme]').forEach(button => button.setAttribute('aria-selected', String(button.dataset.uiTheme === uiTheme)));
 }
+function showUnlockTransition() {
+  for (const [kind, screen] of Object.entries(screens)) {
+    const texture = new THREE.CanvasTexture(unlockAnimator.textures[kind]);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    texture.anisotropy = renderer.capabilities.getMaxAnisotropy();
+    screen.material.map = texture;
+    screen.pixel.value.set(1 / texture.image.width, 1 / texture.image.height);
+    screen.frame.value.copy(kind === 'inner' ? innerUIFrame : outerUIFrame);
+    screen.gradient.value.set(kind === 'inner' ? .5 : 0, kind === 'inner' ? 0 : 1);
+  }
+}
 document.querySelectorAll('[data-ui-theme]').forEach(button => button.addEventListener('click', () => {
   if (button.dataset.uiTheme === 'custom') {
     uiInput.click();
@@ -126,10 +138,12 @@ document.querySelectorAll('[data-ui-theme]').forEach(button => button.addEventLi
 }));
 
 function unlock() {
-  if (!ready || uiTheme !== 'lockscreen') return;
-  uiTheme = 'home';
-  showDefaultUI();
+  if (!ready || uiTheme !== 'lockscreen' || unlockTransition) return;
+  uiTheme = 'unlocking';
+  unlockAnimator.render(0);
+  showUnlockTransition();
   setPlaying(false);
+  unlockTransition = { elapsed: 0, duration: .82 };
   transition = { from: angle, to: 180, elapsed: 0 };
 }
 window.addEventListener('keydown', event => {
@@ -338,6 +352,17 @@ let lastTime = performance.now();
 renderer.setAnimationLoop(now => {
   const delta = Math.min((now - lastTime) / 1000, .05);
   lastTime = now;
+  if (unlockTransition) {
+    unlockTransition.elapsed += delta;
+    const progress = Math.min(unlockTransition.elapsed / unlockTransition.duration, 1);
+    unlockAnimator.render(progress);
+    for (const screen of Object.values(screens)) screen.material.map.needsUpdate = true;
+    if (progress === 1) {
+      unlockTransition = null;
+      uiTheme = 'home';
+      showDefaultUI();
+    }
+  }
   if (ready && playing) {
     phase = (phase + delta) % 8.6;
     let value;
