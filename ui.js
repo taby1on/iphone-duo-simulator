@@ -67,7 +67,7 @@ function createNotificationAnimator(images) {
       glass.addColorStop(0, 'rgba(255,255,255,.70)'); glass.addColorStop(.5, 'rgba(226,238,255,.46)'); glass.addColorStop(1, 'rgba(181,201,230,.40)');
       rounded(ctx, x, y, cardW, cardH, 48); ctx.fillStyle = glass; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(255,255,255,.82)'; ctx.stroke();
       ctx.textAlign = 'center'; ctx.fillStyle = '#151820'; ctx.font = '600 38px -apple-system, BlinkMacSystemFont, sans-serif'; ctx.fillText('Not Available', w / 2, y + 104);
-      ctx.fillStyle = 'rgba(21,24,32,.78)'; ctx.font = '400 28px -apple-system, BlinkMacSystemFont, sans-serif'; ctx.fillText('This app is not available yet.', w / 2, y + 155);
+      ctx.fillStyle = 'rgba(21,24,32,.78)'; ctx.font = '400 28px -apple-system, BlinkMacSystemFont, sans-serif'; ctx.fillText('This app is not supported yet.', w / 2, y + 155);
       ctx.fillStyle = 'rgba(32,105,222,.98)'; ctx.font = '600 30px -apple-system, BlinkMacSystemFont, sans-serif'; ctx.fillText('OK', w / 2, y + 226);
       ctx.restore();
     }
