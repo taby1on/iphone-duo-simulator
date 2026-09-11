@@ -144,6 +144,7 @@ function unlock() {
   showUnlockTransition();
   setPlaying(false);
   unlockTransition = { elapsed: 0, duration: .82 };
+  console.info('[duo] lock screen unlock started');
   transition = { from: angle, to: 180, elapsed: 0 };
 }
 window.addEventListener('keydown', event => {
@@ -361,6 +362,7 @@ renderer.setAnimationLoop(now => {
       unlockTransition = null;
       uiTheme = 'home';
       showDefaultUI();
+      console.info('[duo] lock screen unlock completed');
     }
   }
   if (ready && playing) {

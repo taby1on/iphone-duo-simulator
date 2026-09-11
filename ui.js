@@ -76,8 +76,10 @@ function createUnlockAnimator(images) {
       const sheet = Math.min(1, Math.max(0, (progress - .04) / .68));
       const sheetY = height * (1 - sheet) * .42;
       context.save();
+      // Use a basic clipping rectangle for compatibility with embedded WebViews.
+      // The specular/highlight layers below supply the rounded-liquid appearance.
       context.beginPath();
-      context.roundRect(width * .03, sheetY, width * .94, height * .97, width * .052);
+      context.rect(0, sheetY, width, height - sheetY);
       context.clip();
       context.globalAlpha = .44 * reveal;
       context.filter = `blur(${Math.max(0, 30 * (1 - reveal))}px)`;
