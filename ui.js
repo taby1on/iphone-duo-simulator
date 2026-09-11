@@ -58,7 +58,8 @@ function createUnlockAnimator(images) {
 
   const render = progress => {
     const eased = 1 - Math.pow(1 - Math.min(1, progress), 4);
-    const reveal = Math.min(1, Math.max(0, (progress - .08) / .72));
+    // Keep the two keyframes visibly separate before introducing Home.
+    const reveal = Math.min(1, Math.max(0, (progress - .22) / .68));
     for (const kind of ['inner', 'outer']) {
       const canvas = canvases[kind];
       const context = canvas.getContext('2d');
@@ -73,7 +74,7 @@ function createUnlockAnimator(images) {
       context.restore();
 
       // A blurred, refractive glass sheet carries the new home screen upward.
-      const sheet = Math.min(1, Math.max(0, (progress - .04) / .68));
+      const sheet = Math.min(1, Math.max(0, (progress - .10) / .72));
       const sheetY = height * (1 - sheet) * .42;
       context.save();
       // Use a basic clipping rectangle for compatibility with embedded WebViews.

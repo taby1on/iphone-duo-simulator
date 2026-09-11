@@ -126,6 +126,7 @@ function showUnlockTransition() {
     screen.pixel.value.set(1 / texture.image.width, 1 / texture.image.height);
     screen.frame.value.copy(kind === 'inner' ? innerUIFrame : outerUIFrame);
     screen.gradient.value.set(kind === 'inner' ? .5 : 0, kind === 'inner' ? 0 : 1);
+    screen.material.needsUpdate = true;
   }
 }
 document.querySelectorAll('[data-ui-theme]').forEach(button => button.addEventListener('click', () => {
@@ -133,6 +134,13 @@ document.querySelectorAll('[data-ui-theme]').forEach(button => button.addEventLi
     uiInput.click();
     return;
   }
+  // Home is an unlock destination while the phone is locked, never an
+  // instant mode switch. It remains a direct preview only after unlocking.
+  if (button.dataset.uiTheme === 'home' && uiTheme === 'lockscreen') {
+    unlock();
+    return;
+  }
+  unlockTransition = null;
   uiTheme = button.dataset.uiTheme;
   showDefaultUI();
 }));
@@ -143,7 +151,7 @@ function unlock() {
   unlockAnimator.render(0);
   showUnlockTransition();
   setPlaying(false);
-  unlockTransition = { elapsed: 0, duration: .82 };
+  unlockTransition = { elapsed: 0, duration: 1.18 };
   console.info('[duo] lock screen unlock started');
   transition = { from: angle, to: 180, elapsed: 0 };
 }
