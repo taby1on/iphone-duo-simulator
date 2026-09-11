@@ -32,7 +32,48 @@ export async function loadDefaultUIs() {
     }
   }
   const animator = createUnlockAnimator(images);
-  return { themes, animator };
+  const notification = createNotificationAnimator(images);
+  return { themes, animator, notification };
+}
+
+function createNotificationAnimator(images) {
+  const canvases = {}, textures = {};
+  for (const kind of ['inner', 'outer']) {
+    const canvas = document.createElement('canvas');
+    canvas.width = kind === 'inner' ? 1600 : 774; canvas.height = 1125;
+    canvases[kind] = canvas; textures[kind] = canvas;
+  }
+  const rounded = (ctx, x, y, w, h, r) => {
+    ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+  };
+  const drawHome = (ctx, canvas, kind) => {
+    const crop = kind === 'inner' ? [22, 22, 1072, 754] : [28, 16, 510, 742];
+    ctx.drawImage(images[`launcher-${kind}.png`], ...crop, 0, 0, canvas.width, canvas.height);
+  };
+  const render = progress => {
+    const ease = 1 - Math.pow(1 - Math.min(1, progress), 4);
+    for (const kind of ['inner', 'outer']) {
+      const canvas = canvases[kind], ctx = canvas.getContext('2d');
+      const w = canvas.width, h = canvas.height, cardW = kind === 'inner' ? 580 : 540, cardH = 282;
+      const x = (w - cardW) / 2, y = (h - cardH) / 2 - 20, scale = .88 + .12 * ease;
+      ctx.clearRect(0, 0, w, h); drawHome(ctx, canvas, kind);
+      ctx.save(); ctx.globalAlpha = ease; ctx.translate(w / 2, h / 2); ctx.scale(scale, scale); ctx.translate(-w / 2, -h / 2);
+      // Translucent, refractive Liquid Glass card with a specular top edge.
+      ctx.save(); rounded(ctx, x - 20, y - 20, cardW + 40, cardH + 40, 56); ctx.clip();
+      ctx.globalAlpha = .33; ctx.filter = 'blur(25px) saturate(1.4)'; ctx.drawImage(canvas, -12, -12, w + 24, h + 24); ctx.restore();
+      const glass = ctx.createLinearGradient(x, y, x + cardW, y + cardH);
+      glass.addColorStop(0, 'rgba(255,255,255,.70)'); glass.addColorStop(.5, 'rgba(226,238,255,.46)'); glass.addColorStop(1, 'rgba(181,201,230,.40)');
+      rounded(ctx, x, y, cardW, cardH, 48); ctx.fillStyle = glass; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(255,255,255,.82)'; ctx.stroke();
+      ctx.textAlign = 'center'; ctx.fillStyle = '#151820'; ctx.font = '600 38px -apple-system, BlinkMacSystemFont, sans-serif'; ctx.fillText('Not Available', w / 2, y + 104);
+      ctx.fillStyle = 'rgba(21,24,32,.78)'; ctx.font = '400 28px -apple-system, BlinkMacSystemFont, sans-serif'; ctx.fillText('This app is not available yet.', w / 2, y + 155);
+      ctx.fillStyle = 'rgba(32,105,222,.98)'; ctx.font = '600 30px -apple-system, BlinkMacSystemFont, sans-serif'; ctx.fillText('OK', w / 2, y + 226);
+      ctx.restore();
+    }
+  };
+  render(0);
+  return { textures, render };
 }
 
 function createUnlockAnimator(images) {

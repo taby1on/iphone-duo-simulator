@@ -44,13 +44,17 @@ let playing = false;
 let phase = 0;
 let transition = null;
 let unlockTransition = null;
+let notificationTransition = null;
+let notificationVisible = false;
 let ready = false;
 const screens = {};
+const raycaster = new THREE.Raycaster();
+const screenPointer = new THREE.Vector2();
 const uiReferenceEye = new THREE.Vector3(0, 0, 40);
 const innerUIFrame = new THREE.Vector4(-7.89935, .34562 - 5.8974, 15.7987, 11.1035);
 const outerUIFrame = new THREE.Vector4(.23396, .27173 - 5.8974, 7.73936, 11.2513)
   .multiplyScalar((uiReferenceEye.z - .24948) / (uiReferenceEye.z - .825538));
-const { themes: defaultUIs, animator: unlockAnimator } = await loadDefaultUIs();
+const { themes: defaultUIs, animator: unlockAnimator, notification: notificationAnimator } = await loadDefaultUIs();
 let uiTheme = 'lockscreen';
 const uiCanvas = document.createElement('canvas');
 uiCanvas.width = 1600;
@@ -129,6 +133,39 @@ function showUnlockTransition() {
     screen.material.needsUpdate = true;
   }
 }
+function showNotificationTransition() {
+  for (const [kind, screen] of Object.entries(screens)) {
+    const texture = new THREE.CanvasTexture(notificationAnimator.textures[kind]);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    texture.anisotropy = renderer.capabilities.getMaxAnisotropy();
+    screen.material.map = texture;
+    screen.pixel.value.set(1 / texture.image.width, 1 / texture.image.height);
+    screen.frame.value.copy(kind === 'inner' ? innerUIFrame : outerUIFrame);
+    screen.gradient.value.set(kind === 'inner' ? .5 : 0, kind === 'inner' ? 0 : 1);
+    screen.material.needsUpdate = true;
+  }
+}
+function showUnavailableNotice() {
+  if (!ready || uiTheme !== 'home' || notificationTransition || notificationVisible) return;
+  notificationAnimator.render(0);
+  showNotificationTransition();
+  notificationTransition = { elapsed: 0, duration: .3 };
+  notificationVisible = true;
+}
+function dismissUnavailableNotice() {
+  if (!notificationVisible) return;
+  notificationVisible = false;
+  notificationTransition = null;
+  showDefaultUI();
+}
+function hitHomeScreen(event) {
+  const rect = renderer.domElement.getBoundingClientRect();
+  screenPointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+  screenPointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+  raycaster.setFromCamera(screenPointer, camera);
+  const hit = screens.inner.mesh ? raycaster.intersectObject(screens.inner.mesh, false)[0] : null;
+  if (hit?.uv && hit.uv.x > .04 && hit.uv.x < .96 && hit.uv.y > .06 && hit.uv.y < .94) showUnavailableNotice();
+}
 document.querySelectorAll('[data-ui-theme]').forEach(button => button.addEventListener('click', () => {
   if (button.dataset.uiTheme === 'custom') {
     uiInput.click();
@@ -162,6 +199,8 @@ let gestureStartY = 0;
 renderer.domElement.addEventListener('pointerdown', event => { gestureStartY = event.clientY; });
 renderer.domElement.addEventListener('pointerup', event => {
   if (gestureStartY - event.clientY > 42) unlock();
+  else if (notificationVisible) dismissUnavailableNotice();
+  else if (uiTheme === 'home') hitHomeScreen(event);
 });
 
 function setPlaying(value) {
@@ -345,6 +384,7 @@ try {
     const mesh = new THREE.Mesh(geometry, material);
     mesh.name = object.name;
     mesh.frustumCulled = false;
+    if (kind) screens[kind].mesh = mesh;
     phone.add(mesh);
     count[flexible ? 'flexible' : moving ? 'moving' : 'fixed']++;
   });
@@ -372,6 +412,13 @@ renderer.setAnimationLoop(now => {
       showDefaultUI();
       console.info('[duo] lock screen unlock completed');
     }
+  }
+  if (notificationTransition) {
+    notificationTransition.elapsed += delta;
+    const progress = Math.min(notificationTransition.elapsed / notificationTransition.duration, 1);
+    notificationAnimator.render(progress);
+    for (const screen of Object.values(screens)) screen.material.map.needsUpdate = true;
+    if (progress === 1) notificationTransition = null;
   }
   if (ready && playing) {
     phase = (phase + delta) % 8.6;
