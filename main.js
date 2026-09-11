@@ -50,7 +50,7 @@ const innerUIFrame = new THREE.Vector4(-7.89935, .34562 - 5.8974, 15.7987, 11.10
 const outerUIFrame = new THREE.Vector4(.23396, .27173 - 5.8974, 7.73936, 11.2513)
   .multiplyScalar((uiReferenceEye.z - .24948) / (uiReferenceEye.z - .825538));
 const defaultUIs = await loadDefaultUIs();
-let uiTheme = 'wallpaper';
+let uiTheme = 'lockscreen';
 const uiCanvas = document.createElement('canvas');
 uiCanvas.width = 1600;
 uiCanvas.height = 1125;
@@ -124,6 +124,22 @@ document.querySelectorAll('[data-ui-theme]').forEach(button => button.addEventLi
   uiTheme = button.dataset.uiTheme;
   showDefaultUI();
 }));
+
+function unlock() {
+  if (!ready || uiTheme !== 'lockscreen') return;
+  uiTheme = 'home';
+  showDefaultUI();
+  setPlaying(false);
+  transition = { from: angle, to: 180, elapsed: 0 };
+}
+window.addEventListener('keydown', event => {
+  if (event.code === 'Space') { event.preventDefault(); unlock(); }
+});
+let gestureStartY = 0;
+renderer.domElement.addEventListener('pointerdown', event => { gestureStartY = event.clientY; });
+renderer.domElement.addEventListener('pointerup', event => {
+  if (gestureStartY - event.clientY > 42) unlock();
+});
 
 function setPlaying(value) {
   playing = value;
