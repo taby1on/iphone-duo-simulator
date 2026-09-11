@@ -66,6 +66,10 @@ function createUnlockAnimator(images) {
       const width = canvas.width, height = canvas.height;
       context.clearRect(0, 0, width, height);
 
+      // The inner and outer home screens are persistent layers. They do not
+      // ride the unlock gesture; only lock-screen glass leaves the device.
+      drawReference(context, canvas, kind, 'home');
+
       // The lock screen leaves first, with its own smooth accelerated curve.
       context.save();
       context.globalAlpha = 1 - Math.min(1, progress * 1.45);
@@ -73,7 +77,8 @@ function createUnlockAnimator(images) {
       drawReference(context, canvas, kind, 'lock');
       context.restore();
 
-      // A blurred, refractive glass sheet carries the new home screen upward.
+      // A blurred, refractive glass sheet follows the lock layer upward. The
+      // fixed home screen remains visible underneath instead of moving with it.
       const sheet = Math.min(1, Math.max(0, (progress - .10) / .72));
       const sheetY = height * (1 - sheet) * .42;
       context.save();
@@ -82,16 +87,10 @@ function createUnlockAnimator(images) {
       context.beginPath();
       context.rect(0, sheetY, width, height - sheetY);
       context.clip();
-      context.globalAlpha = .44 * reveal;
+      context.globalAlpha = .28 * (1 - progress);
       context.filter = `blur(${Math.max(0, 30 * (1 - reveal))}px)`;
       context.translate(0, sheetY - height * .055);
-      drawReference(context, canvas, kind, 'home');
-      context.restore();
-
-      context.save();
-      context.globalAlpha = reveal;
-      context.translate(0, height * (1 - reveal) * .10);
-      drawReference(context, canvas, kind, 'home');
+      drawReference(context, canvas, kind, 'lock');
       context.restore();
 
       // Liquid Glass: soft translucency, moving specular edge and a brief bloom.
