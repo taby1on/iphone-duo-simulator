@@ -1,6 +1,6 @@
-# iPhone Duo · Fold Preview
+# iPhone Duo Simulator
 
-A browser-based study of foldable screen transitions, built with Three.js.
+A browser-based, interactive foldable-device simulator built with Three.js.
 
 [Live demo](https://iphone-duo-tawny.vercel.app/)
 
@@ -9,15 +9,17 @@ A browser-based study of foldable screen transitions, built with Three.js.
 - Only the cover half rotates; the rear-camera half stays fixed.
 - Screen content uses a fixed front-view projection during folding. The outer UI stays aligned with its hinge-side left edge.
 - Blur and darkening follow the image coordinates, including the image edges. Maximum blur radius is 72 source pixels; darkening uses twice the transition strength, capped at black.
-- Wallpaper, Launcher, and Custom modes. Custom opens the image picker directly and applies one image to both screens; the outer screen shows the image's right half.
+- A data-driven lock screen and launcher: individual icon regions, stateful unlock, and a Liquid Glass-style unavailable-app notice.
+- The home layer remains fixed while the lock layer leaves the screen during unlock.
+- The screen runtime is independent from the 3D mesh, so each app can later be replaced with its own route and interaction model.
 - Drag to orbit, scroll to zoom, or use the play button and slider to fold the device.
-- Responsive controls for desktop and mobile. Uploaded images stay in the current browser tab.
+- Responsive controls for desktop and mobile.
 
 ## Run locally
 
 The application is static HTML, CSS, and JavaScript. No Node.js build step is required. Three.js is bundled locally.
 
-The Apple reference assets are downloaded separately. Use Python 3.12 to prepare them:
+The 3D device model is prepared from its source asset. The simulator UI itself is generated from code and does not use system screenshots:
 
 ```sh
 git clone https://github.com/jadon7/iphone-duo.git
@@ -33,11 +35,11 @@ On Windows, activate the environment with `.venv\Scripts\activate`.
 
 Open [http://127.0.0.1:8766/](http://127.0.0.1:8766/). Serve the directory over HTTP; opening `index.html` as a local file cannot load the model.
 
-The preparation script downloads the original Star White USDZ and UI images from Apple, selects the model's Landscape pose, flattens its references, and rewrites texture paths for the browser. The resulting files stay in the ignored `assets/` directory. Asset URLs were verified on September 10, 2026.
+The preparation script downloads the original Star White USDZ, selects its Landscape pose, flattens model references, and rewrites texture paths for the browser. The resulting files stay in the ignored `assets/` directory.
 
-## Screen controls
+## Screen interaction
 
-Choose **Wallpaper** or **Launcher** for the default screen layouts. Choose **Custom** to select an image. The inner screen contains the whole image; the outer screen crops to the right-hand portion and aligns that portion to its left edge. Recommended image size: 2670 × 1878.
+Use Space, swipe upward over the display, or select **Unlock** to open the device. The unlocked launcher is drawn from structured icon data, rather than a single background image. Selecting any displayed icon opens a Liquid Glass-style “Not Available” notice; tap again to dismiss it.
 
 The slider controls the fold from closed to open. The default view is fully open and paused. The outer screen turns off at full opening.
 
@@ -47,9 +49,9 @@ The slider controls the fold from closed to open. The default view is fully open
 | --- | --- |
 | `index.html` | Screen-mode tabs and fold controls |
 | `main.js` | Three.js scene, fold deformation, projected UI, blur, and darkening |
-| `ui.js` | Default screen layouts |
+| `ui.js` | Structured simulator screen runtime: lock, launcher, icons, unlock and notice states |
 | `style.css` | Desktop and mobile layout |
-| `scripts/prepare-assets.py` | Download and prepare the reference assets |
+| `scripts/prepare-assets.py` | Download and prepare the 3D model asset |
 | `vercel.json` | Install and prepare assets during Vercel builds |
 | `vendor/three/` | Three.js runtime and required add-ons |
 
@@ -74,7 +76,7 @@ For other static hosts, prepare the assets locally before publishing the project
 
 Original application code is released under the [MIT license](LICENSE). See [third-party notices](THIRD_PARTY_NOTICES.md) for bundled libraries and reference assets.
 
-Apple models and imagery are excluded from the repository and the MIT license. The preparation script links to their original sources; their use is subject to Apple's terms. This project is an independent animation study.
+The 3D model asset is excluded from the repository and MIT license. The simulator UI is an independent implementation; it does not distribute Apple system assets, app icons, templates, or system files.
 
 - [Apple iPhone Duo](https://www.apple.com/iphone-duo/)
 - [Apple HIG: Designing for iPhone Duo](https://developer.apple.com/design/human-interface-guidelines/designing-for-iphone-duo)

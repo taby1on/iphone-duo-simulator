@@ -18,7 +18,7 @@ The GitHub mark in `index.html` is from [GitHub Octicons](https://github.com/pri
 
 ## Apple reference assets
 
-The iPhone Duo model, textures, wallpapers, and Launcher screenshots belong to Apple and/or their respective rights holders. They are excluded from this repository and from its MIT license. The asset preparation script downloads them from their original Apple URLs for local use; it does not grant rights to these assets.
+The iPhone Duo model and its associated textures belong to Apple and/or their respective rights holders. They are excluded from this repository and from its MIT license. The asset preparation script downloads the model from its original Apple URL for local use; it does not grant rights to the model asset. The simulator lock screen, launcher, icons, and animations are independently drawn from code and do not redistribute Apple UI screenshots or app icons.
 
 - [iPhone Duo product page](https://www.apple.com/iphone-duo/)
 - [Original Star White USDZ model](https://www.apple.com/105/media/us/iphone-duo/2026/9305e4b9-72d9-4c05-9381-b572adadd5e5/ar/iPhone_Duo_e-sim_Star-White_Variant.usdz)

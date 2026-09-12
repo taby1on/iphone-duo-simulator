@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { USDLoader } from 'three/addons/loaders/USDLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
-import { loadDefaultUIs } from './ui.js';
+import { createSimulatorUI } from './ui.js';
 
 const viewport = document.querySelector('#viewport');
 const slider = document.querySelector('#angle');
@@ -43,9 +43,6 @@ let angle = 180;
 let playing = false;
 let phase = 0;
 let transition = null;
-let unlockTransition = null;
-let notificationTransition = null;
-let notificationVisible = false;
 let ready = false;
 const screens = {};
 const raycaster = new THREE.Raycaster();
@@ -54,142 +51,42 @@ const uiReferenceEye = new THREE.Vector3(0, 0, 40);
 const innerUIFrame = new THREE.Vector4(-7.89935, .34562 - 5.8974, 15.7987, 11.1035);
 const outerUIFrame = new THREE.Vector4(.23396, .27173 - 5.8974, 7.73936, 11.2513)
   .multiplyScalar((uiReferenceEye.z - .24948) / (uiReferenceEye.z - .825538));
-const { themes: defaultUIs, animator: unlockAnimator, notification: notificationAnimator } = await loadDefaultUIs();
-let uiTheme = 'lockscreen';
-const uiCanvas = document.createElement('canvas');
-uiCanvas.width = 1600;
-uiCanvas.height = 1125;
-const uiTexture = new THREE.CanvasTexture(uiCanvas);
-uiTexture.colorSpace = THREE.SRGBColorSpace;
-uiTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
+const simulator = createSimulatorUI();
 for (const kind of ['inner', 'outer']) {
-  const defaultTextures = {};
-  for (const [theme, canvases] of Object.entries(defaultUIs)) {
-    const texture = new THREE.CanvasTexture(canvases[kind]);
-    texture.colorSpace = THREE.SRGBColorSpace;
-    texture.anisotropy = renderer.capabilities.getMaxAnisotropy();
-    defaultTextures[theme] = texture;
-  }
-  const material = new THREE.MeshBasicMaterial({ map: defaultTextures[uiTheme], toneMapped: false });
+  const texture = new THREE.CanvasTexture(simulator.textures[kind]);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  const material = new THREE.MeshBasicMaterial({ map: texture, toneMapped: false });
   screens[kind] = {
-    material, defaultTextures,
+    material,
     frame: { value: (kind === 'inner' ? innerUIFrame : outerUIFrame).clone() },
     gradient: { value: new THREE.Vector2(kind === 'inner' ? .5 : 0, kind === 'inner' ? 0 : 1) },
-    pixel: { value: new THREE.Vector2(1 / defaultUIs[uiTheme][kind].width, 1 / defaultUIs[uiTheme][kind].height) },
+    pixel: { value: new THREE.Vector2(1 / simulator.textures[kind].width, 1 / simulator.textures[kind].height) },
   };
-}
-const uiInput = document.querySelector('#ui-upload');
-uiInput.addEventListener('change', async () => {
-  const file = uiInput.files[0];
-  if (!file) return;
-  const url = URL.createObjectURL(file);
-  const img = new Image();
-  img.src = url;
-  try {
-    await img.decode();
-    const c = uiCanvas.getContext('2d');
-    c.fillStyle = '#101418';
-    c.fillRect(0, 0, uiCanvas.width, uiCanvas.height);
-    const scale = Math.min(uiCanvas.width / img.width, uiCanvas.height / img.height);
-    const width = img.width * scale, height = img.height * scale;
-    c.drawImage(img, (uiCanvas.width - width) / 2, (uiCanvas.height - height) / 2, width, height);
-    uiTexture.needsUpdate = true;
-    for (const [kind, screen] of Object.entries(screens)) {
-      screen.material.map = uiTexture;
-      screen.pixel.value.set(1 / uiCanvas.width, 1 / uiCanvas.height);
-      screen.frame.value.copy(innerUIFrame);
-      screen.gradient.value.set(.5, kind === 'inner' ? 0 : 1);
-    }
-    uiTheme = 'custom';
-    document.querySelectorAll('[data-ui-theme]').forEach(button => button.setAttribute('aria-selected', String(button.dataset.uiTheme === uiTheme)));
-    setPlaying(false);
-    transition = { from: angle, to: 180, elapsed: 0 };
-  } catch {
-    alert('Unable to read this image. Choose a PNG, JPG, or WebP file.');
-  } finally {
-    URL.revokeObjectURL(url);
-    uiInput.value = '';
-  }
-});
-function showDefaultUI() {
-  for (const [kind, screen] of Object.entries(screens)) {
-    const texture = screen.defaultTextures[uiTheme];
-    screen.material.map = texture;
-    screen.pixel.value.set(1 / texture.image.width, 1 / texture.image.height);
-    screen.frame.value.copy(kind === 'inner' ? innerUIFrame : outerUIFrame);
-    screen.gradient.value.set(kind === 'inner' ? .5 : 0, kind === 'inner' ? 0 : 1);
-  }
-  document.querySelectorAll('[data-ui-theme]').forEach(button => button.setAttribute('aria-selected', String(button.dataset.uiTheme === uiTheme)));
-}
-function showUnlockTransition() {
-  for (const [kind, screen] of Object.entries(screens)) {
-    const texture = new THREE.CanvasTexture(unlockAnimator.textures[kind]);
-    texture.colorSpace = THREE.SRGBColorSpace;
-    texture.anisotropy = renderer.capabilities.getMaxAnisotropy();
-    screen.material.map = texture;
-    screen.pixel.value.set(1 / texture.image.width, 1 / texture.image.height);
-    screen.frame.value.copy(kind === 'inner' ? innerUIFrame : outerUIFrame);
-    screen.gradient.value.set(kind === 'inner' ? .5 : 0, kind === 'inner' ? 0 : 1);
-    screen.material.needsUpdate = true;
-  }
-}
-function showNotificationTransition() {
-  for (const [kind, screen] of Object.entries(screens)) {
-    const texture = new THREE.CanvasTexture(notificationAnimator.textures[kind]);
-    texture.colorSpace = THREE.SRGBColorSpace;
-    texture.anisotropy = renderer.capabilities.getMaxAnisotropy();
-    screen.material.map = texture;
-    screen.pixel.value.set(1 / texture.image.width, 1 / texture.image.height);
-    screen.frame.value.copy(kind === 'inner' ? innerUIFrame : outerUIFrame);
-    screen.gradient.value.set(kind === 'inner' ? .5 : 0, kind === 'inner' ? 0 : 1);
-    screen.material.needsUpdate = true;
-  }
-}
-function showUnavailableNotice() {
-  if (!ready || uiTheme !== 'home' || notificationTransition || notificationVisible) return;
-  notificationAnimator.render(0);
-  showNotificationTransition();
-  notificationTransition = { elapsed: 0, duration: .3 };
-  notificationVisible = true;
-}
-function dismissUnavailableNotice() {
-  if (!notificationVisible) return;
-  notificationVisible = false;
-  notificationTransition = null;
-  showDefaultUI();
 }
 function hitHomeScreen(event) {
   const rect = renderer.domElement.getBoundingClientRect();
   screenPointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
   screenPointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
   raycaster.setFromCamera(screenPointer, camera);
-  const hit = screens.inner.mesh ? raycaster.intersectObject(screens.inner.mesh, false)[0] : null;
-  if (hit?.uv && hit.uv.x > .04 && hit.uv.x < .96 && hit.uv.y > .06 && hit.uv.y < .94) showUnavailableNotice();
+  const possibleScreens = ['inner', 'outer'];
+  for (const kind of possibleScreens) {
+    const hit = screens[kind].mesh ? raycaster.intersectObject(screens[kind].mesh, false)[0] : null;
+    if (!hit?.uv) continue;
+    const action = simulator.tap(kind, hit.uv);
+    if (action === 'unlock') unlock();
+    return Boolean(action);
+  }
+  return false;
 }
 document.querySelectorAll('[data-ui-theme]').forEach(button => button.addEventListener('click', () => {
-  if (button.dataset.uiTheme === 'custom') {
-    uiInput.click();
-    return;
-  }
-  // Home is an unlock destination while the phone is locked, never an
-  // instant mode switch. It remains a direct preview only after unlocking.
-  if (button.dataset.uiTheme === 'home' && uiTheme === 'lockscreen') {
-    unlock();
-    return;
-  }
-  unlockTransition = null;
-  uiTheme = button.dataset.uiTheme;
-  showDefaultUI();
+  if (button.dataset.uiTheme === 'lockscreen') simulator.lockScreen();
+  else unlock();
 }));
 
 function unlock() {
-  if (!ready || uiTheme !== 'lockscreen' || unlockTransition) return;
-  uiTheme = 'unlocking';
-  unlockAnimator.render(0);
-  showUnlockTransition();
-  setPlaying(false);
-  unlockTransition = { elapsed: 0, duration: 1.18 };
-  console.info('[duo] lock screen unlock started');
+  if (!ready || !simulator.beginUnlock()) return;
+  setPlaying(false); console.info('[duo] lock screen unlock started');
   transition = { from: angle, to: 180, elapsed: 0 };
 }
 window.addEventListener('keydown', event => {
@@ -199,8 +96,7 @@ let gestureStartY = 0;
 renderer.domElement.addEventListener('pointerdown', event => { gestureStartY = event.clientY; });
 renderer.domElement.addEventListener('pointerup', event => {
   if (gestureStartY - event.clientY > 42) unlock();
-  else if (notificationVisible) dismissUnavailableNotice();
-  else if (uiTheme === 'home') hitHomeScreen(event);
+  else hitHomeScreen(event);
 });
 
 function setPlaying(value) {
@@ -389,7 +285,6 @@ try {
     count[flexible ? 'flexible' : moving ? 'moving' : 'fixed']++;
   });
   console.info('Official model ready', JSON.stringify({ ...count, sourceMeshes: phone.children.length, innerUI: true, outerUI: true, fixedHalf: 'rear camera' }));
-  showDefaultUI();
   document.querySelectorAll('button, input').forEach(element => element.disabled = false);
   ready = true;
   setAngle(180);
@@ -401,24 +296,8 @@ let lastTime = performance.now();
 renderer.setAnimationLoop(now => {
   const delta = Math.min((now - lastTime) / 1000, .05);
   lastTime = now;
-  if (unlockTransition) {
-    unlockTransition.elapsed += delta;
-    const progress = Math.min(unlockTransition.elapsed / unlockTransition.duration, 1);
-    unlockAnimator.render(progress);
+  if (simulator.update(delta)) {
     for (const screen of Object.values(screens)) screen.material.map.needsUpdate = true;
-    if (progress === 1) {
-      unlockTransition = null;
-      uiTheme = 'home';
-      showDefaultUI();
-      console.info('[duo] lock screen unlock completed');
-    }
-  }
-  if (notificationTransition) {
-    notificationTransition.elapsed += delta;
-    const progress = Math.min(notificationTransition.elapsed / notificationTransition.duration, 1);
-    notificationAnimator.render(progress);
-    for (const screen of Object.values(screens)) screen.material.map.needsUpdate = true;
-    if (progress === 1) notificationTransition = null;
   }
   if (ready && playing) {
     phase = (phase + delta) % 8.6;
