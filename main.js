@@ -52,6 +52,8 @@ const innerUIFrame = new THREE.Vector4(-7.89935, .34562 - 5.8974, 15.7987, 11.10
 const outerUIFrame = new THREE.Vector4(.23396, .27173 - 5.8974, 7.73936, 11.2513)
   .multiplyScalar((uiReferenceEye.z - .24948) / (uiReferenceEye.z - .825538));
 const simulator = createSimulatorUI();
+const photoUpload = document.querySelector('#photo-upload');
+const photoUploadStatus = document.querySelector('#photo-upload-status');
 for (const kind of ['inner', 'outer']) {
   const texture = new THREE.CanvasTexture(simulator.textures[kind]);
   texture.colorSpace = THREE.SRGBColorSpace;
@@ -83,6 +85,36 @@ document.querySelectorAll('[data-ui-theme]').forEach(button => button.addEventLi
   if (button.dataset.uiTheme === 'lockscreen') simulator.lockScreen();
   else unlock();
 }));
+
+photoUpload.addEventListener('change', async () => {
+  const file = photoUpload.files?.[0];
+  if (!file) return;
+  if (!file.type.startsWith('image/')) {
+    photoUploadStatus.textContent = 'Choose a PNG, JPG, or WebP image.';
+    return;
+  }
+  if (file.size > 25 * 1024 * 1024) {
+    photoUploadStatus.textContent = 'Choose an image smaller than 25 MB.';
+    return;
+  }
+  const url = URL.createObjectURL(file);
+  const image = new Image();
+  image.src = url;
+  try {
+    await image.decode();
+    simulator.previewPhoto(image);
+    for (const screen of Object.values(screens)) screen.material.map.needsUpdate = true;
+    const ratio = image.width / image.height;
+    const suited = Math.abs(ratio - 2670 / 1878) < .015;
+    photoUploadStatus.textContent = suited
+      ? `Loaded ${image.width} × ${image.height} · Duo fit`
+      : `Loaded ${image.width} × ${image.height} · center-cropped`;
+  } catch {
+    photoUploadStatus.textContent = 'This image could not be read.';
+  } finally {
+    photoUpload.value = '';
+  }
+});
 
 function unlock() {
   if (!ready || !simulator.beginUnlock()) return;

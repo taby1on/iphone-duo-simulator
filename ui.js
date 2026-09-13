@@ -16,7 +16,7 @@ export function createSimulatorUI() {
   for (const kind of ['inner', 'outer']) {
     const canvas = document.createElement('canvas'); canvas.width = kind === 'inner' ? 1600 : 774; canvas.height = 1125; canvases[kind] = canvas;
   }
-  const state = { page: 'lock', unlock: null, notice: null };
+  const state = { page: 'lock', unlock: null, notice: null, photo: null };
   const layout = kind => kind === 'inner'
     ? { cols: 6, icon: 128, gap: 54, top: 240, dock: 948 }
     : { cols: 3, icon: 142, gap: 45, top: 235, dock: 948 };
@@ -54,10 +54,20 @@ export function createSimulatorUI() {
     ctx.save(); ctx.globalAlpha = amount; ctx.translate(w / 2, h / 2); ctx.scale(.9 + .1 * amount, .9 + .1 * amount); ctx.translate(-w / 2, -h / 2);
     const fill = ctx.createLinearGradient(x, y, x + cardW, y + cardH); fill.addColorStop(0, 'rgba(255,255,255,.73)'); fill.addColorStop(.5, 'rgba(205,224,245,.53)'); fill.addColorStop(1, 'rgba(166,191,222,.48)'); round(ctx, x, y, cardW, cardH, 48); ctx.fillStyle = fill; ctx.fill(); ctx.strokeStyle = 'rgba(255,255,255,.84)'; ctx.lineWidth = 2; ctx.stroke(); label(ctx, 'Not Available', w / 2, y + 86, 36, 650, '#141820'); label(ctx, 'This app is not supported yet.', w / 2, y + 137, 26, 450, '#303746'); label(ctx, 'OK', w / 2, y + 218, 30, 650, '#1468d8'); ctx.restore();
   }
-  function render() { for (const kind of ['inner', 'outer']) { const canvas = canvases[kind], ctx = canvas.getContext('2d'); ctx.clearRect(0, 0, canvas.width, canvas.height); if (state.page === 'home') home(ctx, canvas, kind); else { home(ctx, canvas, kind); lock(ctx, canvas, kind, state.unlock?.progress || 0); } if (state.notice) notice(ctx, canvas, state.notice.progress); } }
+  function photoPreview(ctx, canvas) {
+    const { width: w, height: h } = canvas, image = state.photo;
+    ctx.fillStyle = '#090a0d'; ctx.fillRect(0, 0, w, h);
+    const scale = Math.max(w / image.width, h / image.height), drawW = image.width * scale, drawH = image.height * scale;
+    ctx.drawImage(image, (w - drawW) / 2, (h - drawH) / 2, drawW, drawH);
+    // A minimal simulator-only chrome keeps the uploaded photo itself unobscured.
+    ctx.fillStyle = 'rgba(0,0,0,.22)'; round(ctx, w / 2 - 122, 38, 244, 48, 24); ctx.fill();
+    label(ctx, 'Photo preview', w / 2, 62, 22, 600);
+  }
+  function render() { for (const kind of ['inner', 'outer']) { const canvas = canvases[kind], ctx = canvas.getContext('2d'); ctx.clearRect(0, 0, canvas.width, canvas.height); if (state.page === 'photo') photoPreview(ctx, canvas); else if (state.page === 'home') home(ctx, canvas, kind); else { home(ctx, canvas, kind); lock(ctx, canvas, kind, state.unlock?.progress || 0); } if (state.notice) notice(ctx, canvas, state.notice.progress); } }
   function beginUnlock() { if (state.page !== 'lock') return false; state.page = 'unlocking'; state.unlock = { progress: 0 }; render(); return true; }
   function lockScreen() { state.page = 'lock'; state.unlock = null; state.notice = null; render(); }
+  function previewPhoto(image) { state.page = 'photo'; state.unlock = null; state.notice = null; state.photo = image; render(); }
   function update(delta) { let changed = false; if (state.unlock) { state.unlock.progress = Math.min(1, state.unlock.progress + delta / .78); changed = true; if (state.unlock.progress === 1) { state.page = 'home'; state.unlock = null; } } if (state.notice?.progress < 1) { state.notice.progress = Math.min(1, state.notice.progress + delta / .26); changed = true; } if (changed) render(); return changed; }
   function tap(kind, uv) { const canvas = canvases[kind], x = uv.x * canvas.width, y = (1 - uv.y) * canvas.height; if (state.notice) { state.notice = null; render(); return 'dismiss'; } if (state.page === 'lock') return 'unlock'; if (state.page !== 'home') return null; const app = hits[kind].find(hit => x >= hit.x && x <= hit.x + hit.w && y >= hit.y && y <= hit.y + hit.h); if (!app) return null; state.notice = { progress: 0, app: app.app }; render(); return 'notice'; }
-  render(); return { textures: canvases, beginUnlock, lockScreen, update, tap, get page() { return state.page; } };
+  render(); return { textures: canvases, beginUnlock, lockScreen, previewPhoto, update, tap, get page() { return state.page; } };
 }

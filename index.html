@@ -18,6 +18,12 @@
     <aside class="screen-panel" aria-label="Screen UI">
       <div class="panel-heading"><h2>Interactive screens</h2></div>
       <div class="ui-themes" role="group" aria-label="Screen controls"><button data-ui-theme="lockscreen" disabled>Lock</button><button data-ui-theme="home" disabled>Unlock</button></div>
+      <label class="photo-upload" for="photo-upload">
+        <span>Upload photo</span>
+        <small>Recommended: 2670 × 1878 px</small>
+      </label>
+      <input id="photo-upload" type="file" accept="image/png,image/jpeg,image/webp" hidden disabled>
+      <p id="photo-upload-status" class="photo-upload-status" aria-live="polite">Landscape · 1.422:1</p>
     </aside>
     <section class="controls" aria-label="Fold animation controls">
       <button id="play" class="play" aria-label="Play animation" disabled><svg id="pause-icon" viewBox="0 0 24 24" hidden><path d="M8 6v12M16 6v12"/></svg><svg id="play-icon" viewBox="0 0 24 24"><path d="m9 5 10 7-10 7Z"/></svg></button>
