@@ -89,28 +89,42 @@ document.querySelectorAll('[data-ui-theme]').forEach(button => button.addEventLi
 photoUpload.addEventListener('change', async () => {
   const file = photoUpload.files?.[0];
   if (!file) return;
-  if (!file.type.startsWith('image/')) {
-    photoUploadStatus.textContent = 'Choose a PNG, JPG, or WebP image.';
+  const isVideo = file.type.startsWith('video/');
+  if (!file.type.startsWith('image/') && !isVideo) {
+    photoUploadStatus.textContent = 'Choose an image or video file.';
     return;
   }
-  if (file.size > 25 * 1024 * 1024) {
-    photoUploadStatus.textContent = 'Choose an image smaller than 25 MB.';
+  if (file.size > (isVideo ? 100 : 25) * 1024 * 1024) {
+    photoUploadStatus.textContent = isVideo ? 'Choose a video smaller than 100 MB.' : 'Choose an image smaller than 25 MB.';
     return;
   }
   const url = URL.createObjectURL(file);
-  const image = new Image();
-  image.src = url;
+  let retainedUrl = false;
   try {
-    await image.decode();
-    simulator.previewPhoto(image);
+    let element, width, height;
+    if (isVideo) {
+      element = document.createElement('video');
+      element.src = url; element.muted = true; element.loop = true; element.playsInline = true; element.preload = 'auto';
+      await new Promise((resolve, reject) => {
+        element.addEventListener('loadeddata', resolve, { once: true });
+        element.addEventListener('error', () => reject(new Error('Unsupported video')), { once: true });
+      });
+      width = element.videoWidth; height = element.videoHeight;
+      await element.play();
+    } else {
+      element = new Image(); element.src = url; await element.decode(); width = element.width; height = element.height;
+    }
+    simulator.previewMedia({ element, width, height, type: isVideo ? 'video' : 'image', time: -1, url });
+    retainedUrl = true;
     for (const screen of Object.values(screens)) screen.material.map.needsUpdate = true;
-    const ratio = image.width / image.height;
+    const ratio = width / height;
     const suited = Math.abs(ratio - 2670 / 1878) < .015;
     photoUploadStatus.textContent = suited
-      ? `Loaded ${image.width} × ${image.height} · Duo fit`
-      : `Loaded ${image.width} × ${image.height} · center-cropped`;
+      ? `Loaded ${width} × ${height} · Duo fit${isVideo ? ' · looping' : ''}`
+      : `Loaded ${width} × ${height} · center-cropped${isVideo ? ' · looping' : ''}`;
   } catch {
-    photoUploadStatus.textContent = 'This image could not be read.';
+    if (!retainedUrl) URL.revokeObjectURL(url);
+    photoUploadStatus.textContent = isVideo ? 'This video could not be played.' : 'This image could not be read.';
   } finally {
     photoUpload.value = '';
   }

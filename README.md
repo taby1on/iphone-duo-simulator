@@ -41,7 +41,7 @@ The preparation script downloads the original Star White USDZ, selects its Lands
 
 Use Space, swipe upward over the display, or select **Unlock** to open the device. The unlocked launcher is drawn from structured icon data, rather than a single background image. Selecting any displayed icon opens a Liquid Glass-style “Not Available” notice; tap again to dismiss it.
 
-Use **Upload photo** in the control dock to preview an image on the Duo displays. The recommended unfolded-inner-screen wallpaper size is **2670 × 1878 px** (landscape, **1.422:1**). PNG, JPG, and WebP images up to 25 MB are accepted. Other aspect ratios remain supported, with a clearly indicated centered crop instead of distortion.
+Use **Upload photo or video** in the control dock to preview media on the Duo displays. The recommended unfolded-inner-screen size is **2670 × 1878 px** (landscape, **1.422:1**). PNG, JPG, and WebP images up to 25 MB are accepted; MP4, WebM, and MOV videos up to 100 MB play muted in a loop. Other aspect ratios remain supported, with a clearly indicated centered crop instead of distortion.
 
 The slider controls the fold from closed to open. The default view is fully open and paused. The outer screen turns off at full opening.
 
