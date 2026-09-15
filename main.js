@@ -51,6 +51,7 @@ const uiReferenceEye = new THREE.Vector3(0, 0, 40);
 const openingCameraStart = new THREE.Vector3(0, 0, 40);
 const openingZoomStart = 1;
 const openingZoomEnd = 1.42;
+let openingDolly = openingZoomStart;
 const innerUIFrame = new THREE.Vector4(-7.89935, .34562 - 5.8974, 15.7987, 11.1035);
 const outerUIFrame = new THREE.Vector4(.23396, .27173 - 5.8974, 7.73936, 11.2513)
   .multiplyScalar((uiReferenceEye.z - .24948) / (uiReferenceEye.z - .825538));
@@ -155,13 +156,21 @@ function setPlaying(value) {
   document.querySelector('#play-icon').toggleAttribute('hidden', value);
   play.setAttribute('aria-label', value ? 'Pause animation' : 'Play animation');
 }
+function setOpeningDolly(value) {
+  openingDolly = value;
+  // Drive the perspective field of view directly. OrbitControls can preserve
+  // orbital distance, but it does not overwrite this lens-based dolly.
+  const baseFov = camera.userData.baseFov ?? camera.fov;
+  camera.zoom = 1;
+  camera.fov = baseFov / openingDolly;
+  camera.updateProjectionMatrix();
+}
 function playOpening({ replay = false } = {}) {
   if (!ready) return;
   if (replay) {
     setAngle(0);
     camera.position.copy(openingCameraStart);
-    camera.zoom = openingZoomStart;
-    camera.updateProjectionMatrix();
+    setOpeningDolly(openingZoomStart);
     controls.update();
   }
   openingTransition = {
@@ -199,8 +208,8 @@ function resize() {
   renderer.setSize(width, height);
   camera.aspect = width / height;
   const pixelsPerUnit = Math.min(width / 25, height / 17, 37);
-  camera.fov = THREE.MathUtils.radToDeg(2 * Math.atan(height / pixelsPerUnit / 2 / 40));
-  camera.updateProjectionMatrix();
+  camera.userData.baseFov = THREE.MathUtils.radToDeg(2 * Math.atan(height / pixelsPerUnit / 2 / 40));
+  setOpeningDolly(openingDolly);
 }
 new ResizeObserver(resize).observe(viewport);
 
@@ -363,8 +372,7 @@ try {
   // eases the camera closer to the inner display, and then holds there.
   setAngle(0);
   camera.position.copy(openingCameraStart);
-  camera.zoom = openingZoomStart;
-  camera.updateProjectionMatrix();
+  setOpeningDolly(openingZoomStart);
   controls.update();
   playOpening();
 } catch (error) {
@@ -385,15 +393,13 @@ renderer.setAnimationLoop(now => {
     // A different, stronger ease makes the dolly movement perceptibly nonlinear.
     const zoomProgress = 1 - Math.pow(1 - progress, 4);
     setAngle(THREE.MathUtils.lerp(openingTransition.fromAngle, 180, foldProgress));
-    camera.zoom = THREE.MathUtils.lerp(openingTransition.fromZoom, openingZoomEnd, zoomProgress);
-    camera.updateProjectionMatrix();
+    setOpeningDolly(THREE.MathUtils.lerp(openingTransition.fromZoom, openingZoomEnd, zoomProgress));
     if (progress === 1) {
       openingTransition = null;
       // Snap the terminal frame to eliminate fractional fold values that can
       // otherwise leave the cover visibly ajar after the animation stops.
       setAngle(180);
-      camera.zoom = openingZoomEnd;
-      camera.updateProjectionMatrix();
+      setOpeningDolly(openingZoomEnd);
       controls.update();
       setPlaying(false);
       console.info('[duo] opening complete; holding unfolded close view');
