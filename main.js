@@ -41,13 +41,15 @@ scene.add(phone);
 const bend = { value: 0 };
 let angle = 180;
 let playing = false;
-let phase = 0;
 let transition = null;
+let openingTransition = null;
 let ready = false;
 const screens = {};
 const raycaster = new THREE.Raycaster();
 const screenPointer = new THREE.Vector2();
 const uiReferenceEye = new THREE.Vector3(0, 0, 40);
+const openingCameraStart = new THREE.Vector3(0, 0, 40);
+const openingCameraEnd = new THREE.Vector3(0, 0, 27.5);
 const innerUIFrame = new THREE.Vector4(-7.89935, .34562 - 5.8974, 15.7987, 11.1035);
 const outerUIFrame = new THREE.Vector4(.23396, .27173 - 5.8974, 7.73936, 11.2513)
   .multiplyScalar((uiReferenceEye.z - .24948) / (uiReferenceEye.z - .825538));
@@ -132,6 +134,7 @@ photoUpload.addEventListener('change', async () => {
 
 function unlock() {
   if (!ready || !simulator.beginUnlock()) return;
+  openingTransition = null;
   setPlaying(false); console.info('[duo] lock screen unlock started');
   transition = { from: angle, to: 180, elapsed: 0 };
 }
@@ -151,6 +154,21 @@ function setPlaying(value) {
   document.querySelector('#play-icon').toggleAttribute('hidden', value);
   play.setAttribute('aria-label', value ? 'Pause animation' : 'Play animation');
 }
+function playOpening({ replay = false } = {}) {
+  if (!ready) return;
+  if (replay) {
+    setAngle(0);
+    camera.position.copy(openingCameraStart);
+    controls.update();
+  }
+  openingTransition = {
+    elapsed: 0,
+    duration: 2.45,
+    fromAngle: angle,
+    fromCamera: camera.position.clone(),
+  };
+  setPlaying(true);
+}
 function setAngle(value) {
   angle = value;
   slider.value = value;
@@ -159,12 +177,17 @@ function setAngle(value) {
   screens.outer.material.color.setScalar(value >= 180 ? 0 : 1);
 }
 play.addEventListener('click', () => {
+  if (openingTransition) {
+    openingTransition = null;
+    setPlaying(false);
+    return;
+  }
   transition = null;
-  if (!playing) phase = 1.2 + Math.acos(2 * angle / 180 - 1) / Math.PI * 3.1;
-  setPlaying(!playing);
+  playOpening({ replay: angle >= 179.9 });
 });
 slider.addEventListener('input', () => {
   transition = null;
+  openingTransition = null;
   setPlaying(false);
   setAngle(Number(slider.value));
 });
@@ -333,7 +356,12 @@ try {
   console.info('Official model ready', JSON.stringify({ ...count, sourceMeshes: phone.children.length, innerUI: true, outerUI: true, fixedHalf: 'rear camera' }));
   document.querySelectorAll('button, input').forEach(element => element.disabled = false);
   ready = true;
-  setAngle(180);
+  // The opening is deliberately one way: it reaches the unfolded state,
+  // eases the camera closer to the inner display, and then holds there.
+  setAngle(0);
+  camera.position.copy(openingCameraStart);
+  controls.update();
+  playOpening();
 } catch (error) {
   alert('Unable to load the model. Refresh the page to try again.');
   console.error(error);
@@ -345,14 +373,19 @@ renderer.setAnimationLoop(now => {
   if (simulator.update(delta)) {
     for (const screen of Object.values(screens)) screen.material.map.needsUpdate = true;
   }
-  if (ready && playing) {
-    phase = (phase + delta) % 8.6;
-    let value;
-    if (phase < 1.2) value = 180;
-    else if (phase < 4.3) value = 90 * (1 + Math.cos((phase - 1.2) / 3.1 * Math.PI));
-    else if (phase < 5.5) value = 0;
-    else value = 90 * (1 - Math.cos((phase - 5.5) / 3.1 * Math.PI));
-    setAngle(value);
+  if (openingTransition) {
+    openingTransition.elapsed += delta;
+    const progress = Math.min(openingTransition.elapsed / openingTransition.duration, 1);
+    const foldProgress = progress * progress * (3 - 2 * progress);
+    // A different, stronger ease makes the dolly movement perceptibly nonlinear.
+    const zoomProgress = 1 - Math.pow(1 - progress, 4);
+    setAngle(THREE.MathUtils.lerp(openingTransition.fromAngle, 180, foldProgress));
+    camera.position.lerpVectors(openingTransition.fromCamera, openingCameraEnd, zoomProgress);
+    if (progress === 1) {
+      openingTransition = null;
+      setPlaying(false);
+      console.info('[duo] opening complete; holding unfolded close view');
+    }
   } else if (transition) {
     transition.elapsed += delta;
     const progress = Math.min(transition.elapsed / 1.4, 1);
