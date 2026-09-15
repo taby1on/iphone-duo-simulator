@@ -94,6 +94,8 @@ document.querySelectorAll('[data-ui-theme]').forEach(button => button.addEventLi
 
 themeToggle.addEventListener('click', () => {
   const dark = document.body.classList.toggle('dark-mode');
+  simulator.setDarkMode(dark);
+  for (const screen of Object.values(screens)) screen.material.map.needsUpdate = true;
   themeToggle.setAttribute('aria-label', dark ? 'Enable light background' : 'Enable dark background');
   themeToggle.textContent = dark ? '☀' : '◐';
 });
@@ -188,8 +190,10 @@ function playOpening({ replay = false } = {}) {
     fromAngle: angle,
     fromZoom: openingDolly,
   };
+  const hasVideo = simulator.hasVideo;
+  if (hasVideo) controlDock.classList.add('is-hidden');
   simulator.playMedia({ restart: replay }).then(playingVideo => {
-    if (playingVideo) controlDock.classList.add('is-hidden');
+    if (!playingVideo && hasVideo) controlDock.classList.remove('is-hidden');
   });
   setPlaying(true);
 }

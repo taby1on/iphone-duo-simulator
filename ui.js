@@ -16,7 +16,7 @@ export function createSimulatorUI() {
   for (const kind of ['inner', 'outer']) {
     const canvas = document.createElement('canvas'); canvas.width = kind === 'inner' ? 1600 : 774; canvas.height = 1125; canvases[kind] = canvas;
   }
-  const state = { page: 'lock', unlock: null, notice: null, media: null };
+  const state = { page: 'lock', unlock: null, notice: null, media: null, dark: false };
   const layout = kind => kind === 'inner'
     ? { cols: 6, icon: 128, gap: 54, top: 240, dock: 948 }
     : { cols: 3, icon: 142, gap: 45, top: 235, dock: 948 };
@@ -30,6 +30,7 @@ export function createSimulatorUI() {
     const dune = ctx.createLinearGradient(0, h * .48, w, h); dune.addColorStop(0, '#9d8167'); dune.addColorStop(.42, '#e4c9a4'); dune.addColorStop(1, '#f3ddbd');
     ctx.fillStyle = dune; ctx.beginPath(); ctx.moveTo(0, h * .62); ctx.bezierCurveTo(w * .19, h * .76, w * .33, h * .72, w * .52, h * .67); ctx.bezierCurveTo(w * .71, h * .79, w * .83, h * .62, w, h * .53); ctx.lineTo(w, h); ctx.lineTo(0, h); ctx.closePath(); ctx.fill();
     ctx.fillStyle = 'rgba(255,255,255,.12)'; for (let y = h * .72; y < h; y += 17) ctx.fillRect(0, y, w, 1);
+    if (state.dark) { ctx.fillStyle = 'rgba(0,5,12,.72)'; ctx.fillRect(0, 0, w, h); }
   }
   function status(ctx, w) { label(ctx, '9:41', 66, 66, 28, 650); label(ctx, '◒', w - 84, 66, 32, 600); }
   function icon(ctx, app, x, y, size) {
@@ -60,11 +61,13 @@ export function createSimulatorUI() {
     const sourceW = state.media.width, sourceH = state.media.height;
     const scale = Math.max(w / sourceW, h / sourceH), drawW = sourceW * scale, drawH = sourceH * scale;
     ctx.drawImage(media, (w - drawW) / 2, (h - drawH) / 2, drawW, drawH);
+    if (state.dark) { ctx.fillStyle = 'rgba(0,4,10,.38)'; ctx.fillRect(0, 0, w, h); }
   }
   function render() { for (const kind of ['inner', 'outer']) { const canvas = canvases[kind], ctx = canvas.getContext('2d'); ctx.clearRect(0, 0, canvas.width, canvas.height); if (state.page === 'media') mediaPreview(ctx, canvas); else if (state.page === 'home') home(ctx, canvas, kind); else { home(ctx, canvas, kind); lock(ctx, canvas, kind, state.unlock?.progress || 0); } if (state.notice) notice(ctx, canvas, state.notice.progress); } }
   function beginUnlock() { if (state.page !== 'lock') return false; state.page = 'unlocking'; state.unlock = { progress: 0 }; render(); return true; }
   function lockScreen() { if (state.media?.type === 'video') state.media.element.pause(); state.page = 'lock'; state.unlock = null; state.notice = null; render(); }
   function previewMedia(media) { if (state.media?.type === 'video') state.media.element.pause(); if (state.media?.url) URL.revokeObjectURL(state.media.url); state.page = 'media'; state.unlock = null; state.notice = null; state.media = media; render(); }
+  function setDarkMode(dark) { state.dark = dark; render(); }
   async function playMedia({ restart = false } = {}) {
     if (state.page !== 'media' || state.media?.type !== 'video') return false;
     if (restart) state.media.element.currentTime = 0;
@@ -73,5 +76,5 @@ export function createSimulatorUI() {
   function pauseMedia() { if (state.media?.type === 'video') state.media.element.pause(); }
   function update(delta) { let changed = false; if (state.unlock) { state.unlock.progress = Math.min(1, state.unlock.progress + delta / .78); changed = true; if (state.unlock.progress === 1) { state.page = 'home'; state.unlock = null; } } if (state.notice?.progress < 1) { state.notice.progress = Math.min(1, state.notice.progress + delta / .26); changed = true; } if (state.page === 'media' && state.media?.type === 'video' && state.media.element.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA && state.media.time !== state.media.element.currentTime) { state.media.time = state.media.element.currentTime; changed = true; } if (changed) render(); return changed; }
   function tap(kind, uv) { const canvas = canvases[kind], x = uv.x * canvas.width, y = (1 - uv.y) * canvas.height; if (state.notice) { state.notice = null; render(); return 'dismiss'; } if (state.page === 'lock') return 'unlock'; if (state.page !== 'home') return null; const app = hits[kind].find(hit => x >= hit.x && x <= hit.x + hit.w && y >= hit.y && y <= hit.y + hit.h); if (!app) return null; state.notice = { progress: 0, app: app.app }; render(); return 'notice'; }
-  render(); return { textures: canvases, beginUnlock, previewMedia, playMedia, pauseMedia, lockScreen, update, tap, get page() { return state.page; } };
+  render(); return { textures: canvases, beginUnlock, previewMedia, playMedia, pauseMedia, lockScreen, setDarkMode, update, tap, get page() { return state.page; }, get hasVideo() { return state.page === 'media' && state.media?.type === 'video'; } };
 }

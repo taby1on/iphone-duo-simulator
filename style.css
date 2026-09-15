@@ -1,7 +1,8 @@
 :root{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Helvetica Neue","PingFang SC",sans-serif;color:#242622;background:#f6f6f3;font-synthesis:none}
 *{box-sizing:border-box}
+html,body,main{background:#f6f6f3}
 body{margin:0;overflow:hidden}
-body.dark-mode{color:#eef1f5;background:#101216}
+html:has(body.dark-mode),body.dark-mode,body.dark-mode main{color:#eef1f5;background:#07090d}
 button,input{-webkit-tap-highlight-color:transparent}
 button{font:inherit;cursor:pointer}
 button:disabled{cursor:wait;opacity:.35}
