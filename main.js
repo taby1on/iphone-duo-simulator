@@ -49,7 +49,8 @@ const raycaster = new THREE.Raycaster();
 const screenPointer = new THREE.Vector2();
 const uiReferenceEye = new THREE.Vector3(0, 0, 40);
 const openingCameraStart = new THREE.Vector3(0, 0, 40);
-const openingCameraEnd = new THREE.Vector3(0, 0, 22.5);
+const openingZoomStart = 1;
+const openingZoomEnd = 1.42;
 const innerUIFrame = new THREE.Vector4(-7.89935, .34562 - 5.8974, 15.7987, 11.1035);
 const outerUIFrame = new THREE.Vector4(.23396, .27173 - 5.8974, 7.73936, 11.2513)
   .multiplyScalar((uiReferenceEye.z - .24948) / (uiReferenceEye.z - .825538));
@@ -159,13 +160,15 @@ function playOpening({ replay = false } = {}) {
   if (replay) {
     setAngle(0);
     camera.position.copy(openingCameraStart);
+    camera.zoom = openingZoomStart;
+    camera.updateProjectionMatrix();
     controls.update();
   }
   openingTransition = {
     elapsed: 0,
     duration: 2.45,
     fromAngle: angle,
-    fromCamera: camera.position.clone(),
+    fromZoom: camera.zoom,
   };
   setPlaying(true);
 }
@@ -360,6 +363,8 @@ try {
   // eases the camera closer to the inner display, and then holds there.
   setAngle(0);
   camera.position.copy(openingCameraStart);
+  camera.zoom = openingZoomStart;
+  camera.updateProjectionMatrix();
   controls.update();
   playOpening();
 } catch (error) {
@@ -380,13 +385,15 @@ renderer.setAnimationLoop(now => {
     // A different, stronger ease makes the dolly movement perceptibly nonlinear.
     const zoomProgress = 1 - Math.pow(1 - progress, 4);
     setAngle(THREE.MathUtils.lerp(openingTransition.fromAngle, 180, foldProgress));
-    camera.position.lerpVectors(openingTransition.fromCamera, openingCameraEnd, zoomProgress);
+    camera.zoom = THREE.MathUtils.lerp(openingTransition.fromZoom, openingZoomEnd, zoomProgress);
+    camera.updateProjectionMatrix();
     if (progress === 1) {
       openingTransition = null;
       // Snap the terminal frame to eliminate fractional fold values that can
       // otherwise leave the cover visibly ajar after the animation stops.
       setAngle(180);
-      camera.position.copy(openingCameraEnd);
+      camera.zoom = openingZoomEnd;
+      camera.updateProjectionMatrix();
       controls.update();
       setPlaying(false);
       console.info('[duo] opening complete; holding unfolded close view');
