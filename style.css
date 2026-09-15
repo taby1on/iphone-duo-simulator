@@ -6,15 +6,15 @@ html:has(body.dark-mode),body.dark-mode,body.dark-mode main{color:#eef1f5;backgr
 button,input{-webkit-tap-highlight-color:transparent}
 button{font:inherit;cursor:pointer}
 button:disabled{cursor:wait;opacity:.35}
-main{height:100dvh;position:relative}
-#viewport{position:absolute;inset:0 0 154px;touch-action:none}
+main{height:100dvh;position:relative;isolation:isolate}
+#viewport{position:absolute;z-index:0;inset:0 0 154px;touch-action:none}
 canvas{display:block;outline:none}
 .github-link{position:absolute;top:calc(16px + env(safe-area-inset-top));right:calc(16px + env(safe-area-inset-right));z-index:1;display:grid;place-items:center;width:44px;height:44px;border-radius:50%;color:#262c24;transition:background .2s,color .2s}
 .github-link svg{width:24px;height:24px;fill:currentColor}
 .github-link:hover{background:#ecefe6;color:#4e5e44}
-.theme-toggle{position:absolute;top:calc(16px + env(safe-area-inset-top));left:calc(16px + env(safe-area-inset-left));z-index:1;display:grid;place-items:center;width:44px;height:44px;border:1px solid rgba(29,34,39,.1);border-radius:50%;background:rgba(255,255,255,.62);color:#262c24;font-size:22px;line-height:1;backdrop-filter:blur(12px);transition:background .2s,color .2s,border-color .2s}
-.theme-toggle:hover{background:#fff}.dark-mode .theme-toggle{background:rgba(35,39,47,.72);color:#f5f7fa;border-color:rgba(255,255,255,.14)}.dark-mode .github-link{color:#edf0f4}.dark-mode .github-link:hover{background:#262c34;color:#fff}
-.control-dock{position:absolute;bottom:28px;left:50%;transform:translateX(-50%);width:min(760px,calc(100% - 56px));display:flex;align-items:center;padding:20px 24px;gap:24px;background:rgba(255,255,255,.86);border:1px solid rgba(216,220,210,.8);border-radius:25px;box-shadow:0 16px 50px -26px #7c83773d;backdrop-filter:blur(16px);transition:opacity .36s ease,transform .48s cubic-bezier(.22,.8,.24,1)}
+.theme-toggle{position:absolute;top:calc(20px + env(safe-area-inset-top));left:calc(20px + env(safe-area-inset-left));z-index:20;display:flex;align-items:center;justify-content:center;gap:8px;min-width:98px;height:46px;padding:0 16px;border:1px solid rgba(216,220,210,.8);border-radius:23px;background:rgba(255,255,255,.86);box-shadow:0 16px 50px -26px #7c83773d;color:#262c24;font-size:13px;font-weight:600;line-height:1;backdrop-filter:blur(16px) saturate(1.18);-webkit-backdrop-filter:blur(16px) saturate(1.18);pointer-events:auto;touch-action:manipulation;transition:background .2s,color .2s,border-color .2s,transform .2s}
+.theme-toggle:hover{background:#fff;transform:translateY(-1px)}.theme-toggle:active{transform:scale(.96)}.theme-toggle__glyph{font-size:18px;line-height:1}.theme-toggle__label{min-width:30px;text-align:left}.dark-mode .theme-toggle{background:rgba(18,22,29,.9);color:#f5f7fa;border-color:rgba(255,255,255,.14)}.dark-mode .github-link{color:#edf0f4}.dark-mode .github-link:hover{background:#262c34;color:#fff}
+.control-dock{position:absolute;z-index:10;bottom:28px;left:50%;transform:translateX(-50%);width:min(760px,calc(100% - 56px));display:flex;align-items:center;padding:20px 24px;gap:24px;background:rgba(255,255,255,.86);border:1px solid rgba(216,220,210,.8);border-radius:25px;box-shadow:0 16px 50px -26px #7c83773d;backdrop-filter:blur(16px);transition:opacity .36s ease,transform .48s cubic-bezier(.22,.8,.24,1)}
 .control-dock.is-hidden{opacity:0;pointer-events:none;transform:translate(-50%,calc(100% + 64px))}
 .controls{flex:1;min-width:0;display:flex;gap:26px;align-items:center;padding-left:24px;border-left:1px solid #e5e8df}
 .play{width:48px;height:48px;border-radius:50%;flex-shrink:0;border:0;background:#262c24;color:#f7faf4;display:grid;place-items:center;transition:background .2s}

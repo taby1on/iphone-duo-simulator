@@ -62,6 +62,8 @@ const photoUpload = document.querySelector('#photo-upload');
 const photoUploadStatus = document.querySelector('#photo-upload-status');
 const controlDock = document.querySelector('.control-dock');
 const themeToggle = document.querySelector('#theme-toggle');
+const themeToggleGlyph = themeToggle.querySelector('.theme-toggle__glyph');
+const themeToggleLabel = themeToggle.querySelector('.theme-toggle__label');
 for (const kind of ['inner', 'outer']) {
   const texture = new THREE.CanvasTexture(simulator.textures[kind]);
   texture.colorSpace = THREE.SRGBColorSpace;
@@ -100,7 +102,8 @@ themeToggle.addEventListener('click', () => {
   for (const screen of Object.values(screens)) screen.material.map.needsUpdate = true;
   themeToggle.setAttribute('aria-label', dark ? 'Enable light background' : 'Enable dark background');
   themeToggle.setAttribute('aria-pressed', String(dark));
-  themeToggle.textContent = dark ? '☀' : '◐';
+  themeToggleGlyph.textContent = dark ? '☀' : '◐';
+  themeToggleLabel.textContent = dark ? 'Light' : 'Dark';
 });
 
 photoUpload.addEventListener('change', async () => {
