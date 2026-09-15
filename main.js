@@ -49,7 +49,7 @@ const raycaster = new THREE.Raycaster();
 const screenPointer = new THREE.Vector2();
 const uiReferenceEye = new THREE.Vector3(0, 0, 40);
 const openingCameraStart = new THREE.Vector3(0, 0, 40);
-const openingCameraEnd = new THREE.Vector3(0, 0, 27.5);
+const openingCameraEnd = new THREE.Vector3(0, 0, 22.5);
 const innerUIFrame = new THREE.Vector4(-7.89935, .34562 - 5.8974, 15.7987, 11.1035);
 const outerUIFrame = new THREE.Vector4(.23396, .27173 - 5.8974, 7.73936, 11.2513)
   .multiplyScalar((uiReferenceEye.z - .24948) / (uiReferenceEye.z - .825538));
@@ -383,6 +383,11 @@ renderer.setAnimationLoop(now => {
     camera.position.lerpVectors(openingTransition.fromCamera, openingCameraEnd, zoomProgress);
     if (progress === 1) {
       openingTransition = null;
+      // Snap the terminal frame to eliminate fractional fold values that can
+      // otherwise leave the cover visibly ajar after the animation stops.
+      setAngle(180);
+      camera.position.copy(openingCameraEnd);
+      controls.update();
       setPlaying(false);
       console.info('[duo] opening complete; holding unfolded close view');
     }
