@@ -60,9 +60,6 @@ export function createSimulatorUI() {
     const sourceW = state.media.width, sourceH = state.media.height;
     const scale = Math.max(w / sourceW, h / sourceH), drawW = sourceW * scale, drawH = sourceH * scale;
     ctx.drawImage(media, (w - drawW) / 2, (h - drawH) / 2, drawW, drawH);
-    // Minimal simulator-only chrome keeps the uploaded content unobscured.
-    ctx.fillStyle = 'rgba(0,0,0,.22)'; round(ctx, w / 2 - 122, 38, 244, 48, 24); ctx.fill();
-    label(ctx, state.media.type === 'video' ? 'Video preview · looping' : 'Photo preview', w / 2, 62, 22, 600);
   }
   function render() { for (const kind of ['inner', 'outer']) { const canvas = canvases[kind], ctx = canvas.getContext('2d'); ctx.clearRect(0, 0, canvas.width, canvas.height); if (state.page === 'media') mediaPreview(ctx, canvas); else if (state.page === 'home') home(ctx, canvas, kind); else { home(ctx, canvas, kind); lock(ctx, canvas, kind, state.unlock?.progress || 0); } if (state.notice) notice(ctx, canvas, state.notice.progress); } }
   function beginUnlock() { if (state.page !== 'lock') return false; state.page = 'unlocking'; state.unlock = { progress: 0 }; render(); return true; }
