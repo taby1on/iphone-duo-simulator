@@ -65,7 +65,13 @@ export function createSimulatorUI() {
   function beginUnlock() { if (state.page !== 'lock') return false; state.page = 'unlocking'; state.unlock = { progress: 0 }; render(); return true; }
   function lockScreen() { if (state.media?.type === 'video') state.media.element.pause(); state.page = 'lock'; state.unlock = null; state.notice = null; render(); }
   function previewMedia(media) { if (state.media?.type === 'video') state.media.element.pause(); if (state.media?.url) URL.revokeObjectURL(state.media.url); state.page = 'media'; state.unlock = null; state.notice = null; state.media = media; render(); }
+  async function playMedia({ restart = false } = {}) {
+    if (state.page !== 'media' || state.media?.type !== 'video') return false;
+    if (restart) state.media.element.currentTime = 0;
+    try { await state.media.element.play(); return true; } catch { return false; }
+  }
+  function pauseMedia() { if (state.media?.type === 'video') state.media.element.pause(); }
   function update(delta) { let changed = false; if (state.unlock) { state.unlock.progress = Math.min(1, state.unlock.progress + delta / .78); changed = true; if (state.unlock.progress === 1) { state.page = 'home'; state.unlock = null; } } if (state.notice?.progress < 1) { state.notice.progress = Math.min(1, state.notice.progress + delta / .26); changed = true; } if (state.page === 'media' && state.media?.type === 'video' && state.media.element.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA && state.media.time !== state.media.element.currentTime) { state.media.time = state.media.element.currentTime; changed = true; } if (changed) render(); return changed; }
   function tap(kind, uv) { const canvas = canvases[kind], x = uv.x * canvas.width, y = (1 - uv.y) * canvas.height; if (state.notice) { state.notice = null; render(); return 'dismiss'; } if (state.page === 'lock') return 'unlock'; if (state.page !== 'home') return null; const app = hits[kind].find(hit => x >= hit.x && x <= hit.x + hit.w && y >= hit.y && y <= hit.y + hit.h); if (!app) return null; state.notice = { progress: 0, app: app.app }; render(); return 'notice'; }
-  render(); return { textures: canvases, beginUnlock, lockScreen, previewMedia, update, tap, get page() { return state.page; } };
+  render(); return { textures: canvases, beginUnlock, previewMedia, playMedia, pauseMedia, lockScreen, update, tap, get page() { return state.page; } };
 }

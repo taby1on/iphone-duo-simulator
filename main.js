@@ -58,6 +58,8 @@ const outerUIFrame = new THREE.Vector4(.23396, .27173 - 5.8974, 7.73936, 11.2513
 const simulator = createSimulatorUI();
 const photoUpload = document.querySelector('#photo-upload');
 const photoUploadStatus = document.querySelector('#photo-upload-status');
+const controlDock = document.querySelector('.control-dock');
+const themeToggle = document.querySelector('#theme-toggle');
 for (const kind of ['inner', 'outer']) {
   const texture = new THREE.CanvasTexture(simulator.textures[kind]);
   texture.colorSpace = THREE.SRGBColorSpace;
@@ -86,9 +88,15 @@ function hitHomeScreen(event) {
   return false;
 }
 document.querySelectorAll('[data-ui-theme]').forEach(button => button.addEventListener('click', () => {
-  if (button.dataset.uiTheme === 'lockscreen') simulator.lockScreen();
+  if (button.dataset.uiTheme === 'lockscreen') { simulator.lockScreen(); controlDock.classList.remove('is-hidden'); }
   else unlock();
 }));
+
+themeToggle.addEventListener('click', () => {
+  const dark = document.body.classList.toggle('dark-mode');
+  themeToggle.setAttribute('aria-label', dark ? 'Enable light background' : 'Enable dark background');
+  themeToggle.textContent = dark ? '☀' : '◐';
+});
 
 photoUpload.addEventListener('change', async () => {
   const file = photoUpload.files?.[0];
@@ -114,18 +122,18 @@ photoUpload.addEventListener('change', async () => {
         element.addEventListener('error', () => reject(new Error('Unsupported video')), { once: true });
       });
       width = element.videoWidth; height = element.videoHeight;
-      await element.play();
     } else {
       element = new Image(); element.src = url; await element.decode(); width = element.width; height = element.height;
     }
     simulator.previewMedia({ element, width, height, type: isVideo ? 'video' : 'image', time: -1, url });
+    controlDock.classList.remove('is-hidden');
     retainedUrl = true;
     for (const screen of Object.values(screens)) screen.material.map.needsUpdate = true;
     const ratio = width / height;
     const suited = Math.abs(ratio - 2670 / 1878) < .015;
     photoUploadStatus.textContent = suited
-      ? `Loaded ${width} × ${height} · Duo fit${isVideo ? ' · looping' : ''}`
-      : `Loaded ${width} × ${height} · center-cropped${isVideo ? ' · looping' : ''}`;
+      ? `Loaded ${width} × ${height} · Duo fit${isVideo ? ' · ready to play' : ''}`
+      : `Loaded ${width} × ${height} · center-cropped${isVideo ? ' · ready to play' : ''}`;
   } catch {
     if (!retainedUrl) URL.revokeObjectURL(url);
     photoUploadStatus.textContent = isVideo ? 'This video could not be played.' : 'This image could not be read.';
@@ -142,6 +150,7 @@ function unlock() {
 }
 window.addEventListener('keydown', event => {
   if (event.code === 'Space') { event.preventDefault(); unlock(); }
+  if (event.code === 'Escape') controlDock.classList.remove('is-hidden');
 });
 let gestureStartY = 0;
 renderer.domElement.addEventListener('pointerdown', event => { gestureStartY = event.clientY; });
@@ -177,8 +186,11 @@ function playOpening({ replay = false } = {}) {
     elapsed: 0,
     duration: 2.45,
     fromAngle: angle,
-    fromZoom: camera.zoom,
+    fromZoom: openingDolly,
   };
+  simulator.playMedia({ restart: replay }).then(playingVideo => {
+    if (playingVideo) controlDock.classList.add('is-hidden');
+  });
   setPlaying(true);
 }
 function setAngle(value) {
@@ -191,6 +203,8 @@ function setAngle(value) {
 play.addEventListener('click', () => {
   if (openingTransition) {
     openingTransition = null;
+    simulator.pauseMedia();
+    controlDock.classList.remove('is-hidden');
     setPlaying(false);
     return;
   }
