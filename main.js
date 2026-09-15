@@ -39,7 +39,9 @@ controls.update();
 const phone = new THREE.Group();
 scene.add(phone);
 const bend = { value: 0 };
-let angle = 180;
+// Start as a folded, single-screen device. Opening is intentionally reserved
+// for a user-initiated video playback.
+let angle = 0;
 let playing = false;
 let transition = null;
 let openingTransition = null;
@@ -97,6 +99,7 @@ themeToggle.addEventListener('click', () => {
   simulator.setDarkMode(dark);
   for (const screen of Object.values(screens)) screen.material.map.needsUpdate = true;
   themeToggle.setAttribute('aria-label', dark ? 'Enable light background' : 'Enable dark background');
+  themeToggle.setAttribute('aria-pressed', String(dark));
   themeToggle.textContent = dark ? '☀' : '◐';
 });
 
@@ -129,6 +132,15 @@ photoUpload.addEventListener('change', async () => {
     }
     simulator.previewMedia({ element, width, height, type: isVideo ? 'video' : 'image', time: -1, url });
     controlDock.classList.remove('is-hidden');
+    // An uploaded video is a preview until Play is pressed: hold its first
+    // decoded frame on the folded outer display and reset the camera framing.
+    setAngle(0);
+    camera.position.copy(openingCameraStart);
+    setOpeningDolly(openingZoomStart);
+    controls.update();
+    slider.disabled = !isVideo;
+    play.disabled = !isVideo;
+    setPlaying(false);
     retainedUrl = true;
     for (const screen of Object.values(screens)) screen.material.map.needsUpdate = true;
     const ratio = width / height;
@@ -177,7 +189,9 @@ function setOpeningDolly(value) {
   camera.updateProjectionMatrix();
 }
 function playOpening({ replay = false } = {}) {
-  if (!ready) return;
+  // The landing state must never unfold itself. A video upload followed by a
+  // direct click/tap on Play is the sole route into this experience.
+  if (!ready || !simulator.hasVideo) return;
   if (replay) {
     setAngle(0);
     camera.position.copy(openingCameraStart);
@@ -218,6 +232,8 @@ play.addEventListener('click', () => {
 slider.addEventListener('input', () => {
   transition = null;
   openingTransition = null;
+  simulator.pauseMedia();
+  controlDock.classList.remove('is-hidden');
   setPlaying(false);
   setAngle(Number(slider.value));
 });
@@ -385,14 +401,18 @@ try {
   });
   console.info('Official model ready', JSON.stringify({ ...count, sourceMeshes: phone.children.length, innerUI: true, outerUI: true, fixedHalf: 'rear camera' }));
   document.querySelectorAll('button, input').forEach(element => element.disabled = false);
+  // Keep the fold controls inactive on the landing state; they become
+  // available only after a video has been decoded for preview.
+  slider.disabled = true;
+  play.disabled = true;
   ready = true;
-  // The opening is deliberately one way: it reaches the unfolded state,
-  // eases the camera closer to the inner display, and then holds there.
+  // The landing state is deliberately folded and still. A later Play click
+  // on an uploaded video performs the one-way opening and camera dolly.
   setAngle(0);
   camera.position.copy(openingCameraStart);
   setOpeningDolly(openingZoomStart);
   controls.update();
-  playOpening();
+  setPlaying(false);
 } catch (error) {
   alert('Unable to load the model. Refresh the page to try again.');
   console.error(error);
