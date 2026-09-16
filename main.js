@@ -2,11 +2,14 @@ import * as THREE from 'three';
 import { USDLoader } from 'three/addons/loaders/USDLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
-import { createSimulatorUI } from './ui.js';
+import { createSimulatorUI } from './ui.js?v=video-transport-controls';
 
 const viewport = document.querySelector('#viewport');
 const slider = document.querySelector('#angle');
 const play = document.querySelector('#play');
+const videoTransport = document.querySelector('#video-transport');
+const videoProgress = document.querySelector('#video-progress');
+const videoTime = document.querySelector('#video-time');
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(32, 1, .1, 250);
 camera.position.set(0, 0, 40);
@@ -43,6 +46,8 @@ const bend = { value: 0 };
 // for a user-initiated video playback.
 let angle = 0;
 let playing = false;
+let videoPlaybackStarted = false;
+let scrubbingVideo = false;
 let transition = null;
 let openingTransition = null;
 let ready = false;
@@ -143,7 +148,11 @@ photoUpload.addEventListener('change', async () => {
     controls.update();
     slider.disabled = !isVideo;
     play.disabled = !isVideo;
+    videoTransport.hidden = !isVideo;
+    videoProgress.disabled = !isVideo;
+    videoPlaybackStarted = false;
     setPlaying(false);
+    syncVideoControls();
     retainedUrl = true;
     for (const screen of Object.values(screens)) screen.material.map.needsUpdate = true;
     const ratio = width / height;
@@ -167,7 +176,7 @@ function unlock() {
 }
 window.addEventListener('keydown', event => {
   if (event.code === 'Space') { event.preventDefault(); unlock(); }
-  if (event.code === 'Escape') controlDock.classList.remove('is-hidden');
+  if (event.code === 'Escape') exitVideoPlayback();
 });
 let gestureStartY = 0;
 renderer.domElement.addEventListener('pointerdown', event => { gestureStartY = event.clientY; });
@@ -180,7 +189,37 @@ function setPlaying(value) {
   playing = value;
   document.querySelector('#pause-icon').toggleAttribute('hidden', !value);
   document.querySelector('#play-icon').toggleAttribute('hidden', value);
-  play.setAttribute('aria-label', value ? 'Pause animation' : 'Play animation');
+  play.setAttribute('aria-label', value ? 'Pause video' : videoPlaybackStarted ? 'Resume video' : 'Play video and open Duo');
+}
+function formatVideoTime(seconds) {
+  const safe = Number.isFinite(seconds) ? Math.max(0, seconds) : 0;
+  const minutes = Math.floor(safe / 60);
+  return `${minutes}:${String(Math.floor(safe % 60)).padStart(2, '0')}`;
+}
+function syncVideoControls() {
+  const media = simulator.mediaState();
+  videoTransport.hidden = !media.isVideo;
+  videoProgress.disabled = !media.isVideo || !media.duration;
+  if (!media.isVideo) {
+    videoProgress.value = 0;
+    videoProgress.style.setProperty('--progress', '0%');
+    videoTime.value = '0:00 / 0:00';
+    videoTime.textContent = '0:00 / 0:00';
+    return;
+  }
+  const ratio = media.duration ? media.currentTime / media.duration : 0;
+  if (!scrubbingVideo) videoProgress.value = String(Math.round(ratio * 1000));
+  videoProgress.style.setProperty('--progress', `${ratio * 100}%`);
+  videoTime.value = `${formatVideoTime(media.currentTime)} / ${formatVideoTime(media.duration)}`;
+  videoTime.textContent = videoTime.value;
+  if (playing && media.paused && !openingTransition) setPlaying(false);
+}
+function exitVideoPlayback() {
+  openingTransition = null;
+  if (simulator.hasVideo) simulator.pauseMedia();
+  setPlaying(false);
+  controlDock.classList.remove('is-hidden');
+  syncVideoControls();
 }
 function setOpeningDolly(value) {
   openingDolly = value;
@@ -211,8 +250,9 @@ function playOpening({ replay = false } = {}) {
   if (hasVideo) controlDock.classList.add('is-hidden');
   simulator.playMedia({ restart: replay }).then(playingVideo => {
     if (!playingVideo && hasVideo) controlDock.classList.remove('is-hidden');
+    setPlaying(playingVideo);
+    syncVideoControls();
   });
-  setPlaying(true);
 }
 function setAngle(value) {
   angle = value;
@@ -222,24 +262,34 @@ function setAngle(value) {
   screens.outer.material.color.setScalar(value >= 180 ? 0 : 1);
 }
 play.addEventListener('click', () => {
-  if (openingTransition) {
-    openingTransition = null;
-    simulator.pauseMedia();
-    controlDock.classList.remove('is-hidden');
-    setPlaying(false);
+  if (!simulator.hasVideo) return;
+  if (playing || openingTransition) { exitVideoPlayback(); return; }
+  transition = null;
+  if (!videoPlaybackStarted) {
+    videoPlaybackStarted = true;
+    playOpening({ replay: true });
     return;
   }
-  transition = null;
-  playOpening({ replay: angle >= 179.9 });
+  controlDock.classList.add('is-hidden');
+  simulator.playMedia().then(resumed => {
+    if (!resumed) controlDock.classList.remove('is-hidden');
+    setPlaying(resumed);
+    syncVideoControls();
+  });
 });
 slider.addEventListener('input', () => {
   transition = null;
-  openingTransition = null;
-  simulator.pauseMedia();
-  controlDock.classList.remove('is-hidden');
-  setPlaying(false);
+  exitVideoPlayback();
   setAngle(Number(slider.value));
 });
+videoProgress.addEventListener('pointerdown', () => { scrubbingVideo = true; });
+videoProgress.addEventListener('input', () => {
+  const media = simulator.mediaState();
+  if (!media.isVideo || !media.duration) return;
+  simulator.seekMedia(Number(videoProgress.value) / 1000);
+  syncVideoControls();
+});
+videoProgress.addEventListener('change', () => { scrubbingVideo = false; syncVideoControls(); });
 function resize() {
   const { width, height } = viewport.getBoundingClientRect();
   renderer.setSize(width, height);
@@ -408,6 +458,7 @@ try {
   // available only after a video has been decoded for preview.
   slider.disabled = true;
   play.disabled = true;
+  videoProgress.disabled = true;
   ready = true;
   // The landing state is deliberately folded and still. A later Play click
   // on an uploaded video performs the one-way opening and camera dolly.
@@ -442,7 +493,8 @@ renderer.setAnimationLoop(now => {
       setAngle(180);
       setOpeningDolly(openingZoomEnd);
       controls.update();
-      setPlaying(false);
+      // The video continues to loop after the fold reaches its terminal view.
+      syncVideoControls();
       console.info('[duo] opening complete; holding unfolded close view');
     }
   } else if (transition) {
@@ -453,5 +505,6 @@ renderer.setAnimationLoop(now => {
     if (progress === 1) transition = null;
   }
   controls.update();
+  syncVideoControls();
   renderer.render(scene, camera);
 });

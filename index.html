@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>iPhone Duo · Interactive Prototype</title>
   <link rel="icon" href="data:,">
-  <link rel="stylesheet" href="./style.css?v=glass-theme-control">
+  <link rel="stylesheet" href="./style.css?v=video-transport-controls">
   <script type="importmap">{"imports":{"three":"./vendor/three/build/three.module.js","three/addons/":"./vendor/three/examples/jsm/"}}</script>
 </head>
 <body>
@@ -30,10 +30,17 @@
     </aside>
     <section class="controls" aria-label="Fold animation controls">
       <button id="play" class="play" aria-label="Play animation" disabled><svg id="pause-icon" viewBox="0 0 24 24" hidden><path d="M8 6v12M16 6v12"/></svg><svg id="play-icon" viewBox="0 0 24 24"><path d="m9 5 10 7-10 7Z"/></svg></button>
-      <input id="angle" aria-label="Fold progress" type="range" min="0" max="180" value="180" step="0.1" disabled>
+      <div class="control-tracks">
+        <div id="video-transport" class="video-transport" hidden aria-label="Video playback controls">
+          <span class="video-transport__label">Video</span>
+          <input id="video-progress" aria-label="Video progress" type="range" min="0" max="1000" value="0" step="1" disabled>
+          <output id="video-time" class="video-time" aria-live="off">0:00 / 0:00</output>
+        </div>
+        <div class="fold-transport"><input id="angle" aria-label="Fold progress" type="range" min="0" max="180" value="180" step="0.1" disabled></div>
+      </div>
     </section>
     </div>
   </main>
-  <script type="module" src="./main.js?v=glass-theme-control"></script>
+  <script type="module" src="./main.js?v=video-transport-controls"></script>
 </body>
 </html>
